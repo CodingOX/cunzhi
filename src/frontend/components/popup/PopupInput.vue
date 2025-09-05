@@ -567,6 +567,16 @@ defineExpose({
   statusText,
   updateData,
   handleQuoteMessage,
+  // 提供获取最新快照的方法，避免快捷键触发时数据未同步
+  getCurrentData: () => {
+    const conditionalContent = generateConditionalContent()
+    const finalUserInput = userInput.value + conditionalContent
+    return {
+      userInput: finalUserInput,
+      selectedOptions: [...selectedOptions.value],
+      draggedImages: [...uploadedImages.value],
+    }
+  },
 })
 </script>
 

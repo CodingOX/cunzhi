@@ -3,7 +3,7 @@ import type { McpRequest } from '../../types/popup'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useMessage } from 'naive-ui'
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 
 import PopupActions from './PopupActions.vue'
 import PopupContent from './PopupContent.vue'
@@ -222,6 +222,14 @@ async function handleSubmit() {
   submitting.value = true
 
   try {
+    // 在提交前从子组件强制同步一次，避免快捷键触发导致数据滞后
+    if (inputRef.value?.getCurrentData) {
+      const latest = inputRef.value.getCurrentData()
+      userInput.value = latest.userInput
+      selectedOptions.value = latest.selectedOptions
+      draggedImages.value = latest.draggedImages
+      await nextTick()
+    }
     // 使用新的结构化数据格式
     const response = {
       user_input: userInput.value.trim() || null,
@@ -339,6 +347,11 @@ async function handleEnhance() {
   submitting.value = true
 
   try {
+    // 在增强前同步最新输入，避免快捷键触发时取到旧值
+    if (inputRef.value?.getCurrentData) {
+      const latest = inputRef.value.getCurrentData()
+      userInput.value = latest.userInput
+    }
     // 构建增强prompt
     const enhancePrompt = `Use the following prompt to optimize and enhance the context of the content in 《》, and return the enhanced result by calling the tool '寸止' after completion.Here is an instruction that I'd like to give you, but it needs to be improved. Rewrite and enhance this instruction to make it clearer, more specific, less ambiguous, and correct any mistakes. Reply immediately with your answer, even if you're not sure. Consider the context of our conversation history when enhancing the prompt. Reply with the following format:
 
