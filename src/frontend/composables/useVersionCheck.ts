@@ -1,6 +1,20 @@
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { ref } from 'vue'
+// 从根目录引入版本信息作为 Web 环境的兜底（Vite 支持 ?raw 导入）
+// 注意：在纯 Vite 开发或浏览器预览环境下，Tauri 的 invoke 不可用，会回退到此版本号
+let FALLBACK_VERSION = '0.2.0'
+try {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore - 以文本导入后自行解析
+  const raw = (await import('../../../version.json?raw')).default as string
+  const parsed = JSON.parse(raw)
+  if (parsed?.version && typeof parsed.version === 'string')
+    FALLBACK_VERSION = parsed.version
+}
+catch {
+  // 忽略：保持默认兜底版本
+}
 
 interface VersionInfo {
   current: string
@@ -93,12 +107,12 @@ async function getCurrentVersion(): Promise<string> {
   try {
     const appInfo = await invoke('get_app_info') as string
     const match = appInfo.match(/v(\d+\.\d+\.\d+)/)
-    const version = match ? match[1] : '0.2.0'
+    const version = match ? match[1] : FALLBACK_VERSION
     return version
   }
   catch (error) {
     console.error('获取当前版本失败:', error)
-    return '0.2.0'
+    return FALLBACK_VERSION
   }
 }
 

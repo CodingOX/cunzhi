@@ -1,6 +1,17 @@
 <script setup lang="ts">
 import { useMessage } from 'naive-ui'
 import { computed, onMounted } from 'vue'
+// 直接引入版本兜底，避免首屏短暂显示 v0.2.0
+let FALLBACK_VERSION = '0.2.0'
+try {
+  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+  // @ts-ignore
+  const raw = (await import('../../../../version.json?raw')).default as string
+  const parsed = JSON.parse(raw)
+  if (parsed?.version && typeof parsed.version === 'string')
+    FALLBACK_VERSION = parsed.version
+}
+catch {}
 import { useVersionCheck } from '../../composables/useVersionCheck'
 
 const message = useMessage()
@@ -87,7 +98,7 @@ onMounted(async () => {
         </div>
         <div>
           <h3 class="font-semibold text-gray-900 dark:text-white text-sm">
-            寸止 {{ versionInfo ? `v${versionInfo.current}` : 'v0.2.0' }}
+            寸止 {{ versionInfo ? `v${versionInfo.current}` : `v${FALLBACK_VERSION}` }}
           </h3>
           <p class="text-xs text-gray-500 dark:text-gray-400">
             智能代码审查工具，支持MCP协议集成
