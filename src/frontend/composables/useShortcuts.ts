@@ -159,76 +159,111 @@ export function useShortcuts() {
     return `${shortcutKeyToString(binding.key_combination)} ${binding.name}`
   })
 
-  // 监听快速发送快捷键
+  // 监听快速发送快捷键（含配置未就绪时的临时兜底组合）
   function useQuickSubmitShortcut(callback: () => void) {
     const binding = computed(() => getShortcutByAction('submit'))
 
+    // 收集当前激活的监听，便于在绑定变化时清理，避免重复触发
+    let stops: Array<() => void> = []
+    const cleanup = () => { stops.forEach(s => s()); stops = [] }
+
+    const watchCombo = (combo: string) => {
+      const refKey = (keys as any)[combo]
+      if (!refKey)
+        return
+      const stop = watch(refKey, (pressed: boolean) => {
+        if (pressed)
+          callback()
+      })
+      stops.push(stop)
+    }
+
     watch(
       () => binding.value,
-      (newBinding) => {
-        if (!newBinding)
-          return
-
-        const magicKey = shortcutKeyToMagicKey(newBinding.key_combination)
-        const keyRef = keys[magicKey]
-
-        if (keyRef) {
-          watch(keyRef, (pressed) => {
-            if (pressed) {
-              callback()
-            }
-          })
+      (newBinding, _old, onCleanup) => {
+        cleanup()
+        if (newBinding) {
+          // 使用配置中的组合键
+          const magicKey = shortcutKeyToMagicKey(newBinding.key_combination)
+          watchCombo(magicKey)
         }
+        else {
+          // 配置尚未加载完成时的临时兜底：同时监听 Ctrl+Enter 与 Meta+Enter
+          watchCombo('Ctrl+Enter')
+          watchCombo('Meta+Enter')
+        }
+        onCleanup(() => cleanup())
       },
       { immediate: true },
     )
   }
 
-  // 监听增强快捷键
+  // 监听增强快捷键（含配置未就绪时的临时兜底）
   function useEnhanceShortcut(callback: () => void) {
     const binding = computed(() => getShortcutByAction('enhance'))
 
+    let stops: Array<() => void> = []
+    const cleanup = () => { stops.forEach(s => s()); stops = [] }
+    const watchCombo = (combo: string) => {
+      const refKey = (keys as any)[combo]
+      if (!refKey)
+        return
+      const stop = watch(refKey, (pressed: boolean) => {
+        if (pressed)
+          callback()
+      })
+      stops.push(stop)
+    }
+
     watch(
       () => binding.value,
-      (newBinding) => {
-        if (!newBinding)
-          return
-
-        const magicKey = shortcutKeyToMagicKey(newBinding.key_combination)
-        const keyRef = keys[magicKey]
-
-        if (keyRef) {
-          watch(keyRef, (pressed) => {
-            if (pressed) {
-              callback()
-            }
-          })
+      (newBinding, _old, onCleanup) => {
+        cleanup()
+        if (newBinding) {
+          const magicKey = shortcutKeyToMagicKey(newBinding.key_combination)
+          watchCombo(magicKey)
         }
+        else {
+          // 默认兜底：Ctrl+Shift+Enter 与 Meta+Shift+Enter
+          watchCombo('Ctrl+Shift+Enter')
+          watchCombo('Meta+Shift+Enter')
+        }
+        onCleanup(() => cleanup())
       },
       { immediate: true },
     )
   }
 
-  // 监听继续快捷键
+  // 监听继续快捷键（含配置未就绪时的临时兜底）
   function useContinueShortcut(callback: () => void) {
     const binding = computed(() => getShortcutByAction('continue'))
 
+    let stops: Array<() => void> = []
+    const cleanup = () => { stops.forEach(s => s()); stops = [] }
+    const watchCombo = (combo: string) => {
+      const refKey = (keys as any)[combo]
+      if (!refKey)
+        return
+      const stop = watch(refKey, (pressed: boolean) => {
+        if (pressed)
+          callback()
+      })
+      stops.push(stop)
+    }
+
     watch(
       () => binding.value,
-      (newBinding) => {
-        if (!newBinding)
-          return
-
-        const magicKey = shortcutKeyToMagicKey(newBinding.key_combination)
-        const keyRef = keys[magicKey]
-
-        if (keyRef) {
-          watch(keyRef, (pressed) => {
-            if (pressed) {
-              callback()
-            }
-          })
+      (newBinding, _old, onCleanup) => {
+        cleanup()
+        if (newBinding) {
+          const magicKey = shortcutKeyToMagicKey(newBinding.key_combination)
+          watchCombo(magicKey)
         }
+        else {
+          // 默认兜底：Alt+Enter
+          watchCombo('Alt+Enter')
+        }
+        onCleanup(() => cleanup())
       },
       { immediate: true },
     )
