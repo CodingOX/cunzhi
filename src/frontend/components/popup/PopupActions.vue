@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { McpRequest } from '../../types/popup'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, nextTick } from 'vue'
 import { useShortcuts } from '../../composables/useShortcuts'
 
 interface Props {
@@ -62,28 +62,32 @@ const statusText = computed(() => {
 })
 
 // 处理快捷键
-useQuickSubmitShortcut(() => {
-  if (props.canSubmit && !props.submitting) {
+useQuickSubmitShortcut(async () => {
+  // 不依赖 canSubmit（可能滞后），统一由父组件基于最新快照判定
+  if (!props.submitting) {
+    await nextTick()
     handleSubmit()
   }
 })
 
-useEnhanceShortcut(() => {
+useEnhanceShortcut(async () => {
   if (!props.submitting) {
+    await nextTick()
     handleEnhance()
   }
 })
 
-useContinueShortcut(() => {
+useContinueShortcut(async () => {
   if (!props.submitting) {
+    await nextTick()
     handleContinue()
   }
 })
 
 function handleSubmit() {
-  if (props.canSubmit && !props.submitting) {
+  // 触发提交事件，父组件将读取最新快照并自行校验是否可提交
+  if (!props.submitting)
     emit('submit')
-  }
 }
 
 function handleContinue() {

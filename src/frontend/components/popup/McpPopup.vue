@@ -216,23 +216,37 @@ function resetForm() {
 
 // 处理提交
 async function handleSubmit() {
-  if (!canSubmit.value || submitting.value)
+  // 先避免重入；是否可提交的判断下沉到读取最新快照之后
+  if (submitting.value)
     return
 
   submitting.value = true
 
   try {
-    // 在提交前从子组件强制同步一次，避免快捷键触发导致数据滞后
+    // 1) 强制同步输入（处理输入法合成等），并等待一次刷新
+    if (inputRef.value?.forceSync)
+      await inputRef.value.forceSync()
+
+    await nextTick()
+
+    // 2) 读取子组件的最新快照，确保获取到用户最后一刻的输入/选项/图片
     if (inputRef.value?.getCurrentData) {
       const latest = inputRef.value.getCurrentData()
       userInput.value = latest.userInput
       selectedOptions.value = latest.selectedOptions
       draggedImages.value = latest.draggedImages
-      await nextTick()
     }
-    // 使用新的结构化数据格式
+
+    // 3) 基于“最新快照”判定是否有有效内容
+    const hasAny = (
+      (userInput.value?.trim().length ?? 0) > 0
+      || selectedOptions.value.length > 0
+      || draggedImages.value.length > 0
+    )
+
+    // 4) 构建响应（沿用现有的空内容兜底逻辑）
     const response = {
-      user_input: userInput.value.trim() || null,
+      user_input: hasAny ? (userInput.value.trim() || null) : null,
       selected_options: selectedOptions.value,
       images: draggedImages.value.map(imageData => ({
         data: imageData.split(',')[1], // 移除 data:image/png;base64, 前缀
@@ -246,8 +260,8 @@ async function handleSubmit() {
       },
     }
 
-    // 如果没有任何有效内容，设置默认用户输入
-    if (!response.user_input && response.selected_options.length === 0 && response.images.length === 0) {
+    // 无任何有效内容时，保持原有“确认继续”的兜底行为
+    if (!hasAny) {
       response.user_input = '用户确认继续'
     }
 
@@ -347,6 +361,12 @@ async function handleEnhance() {
   submitting.value = true
 
   try {
+    // 增强前同步一次输入，避免输入法合成未提交
+    if (inputRef.value?.forceSync)
+      await inputRef.value.forceSync()
+
+    await nextTick()
+
     // 在增强前同步最新输入，避免快捷键触发时取到旧值
     if (inputRef.value?.getCurrentData) {
       const latest = inputRef.value.getCurrentData()

@@ -35,6 +35,7 @@ const userInput = ref('')
 const selectedOptions = ref<string[]>([])
 const uploadedImages = ref<string[]>([])
 const textareaRef = ref<HTMLTextAreaElement | null>(null)
+const isComposing = ref(false)
 
 // 自定义prompt相关状态
 const customPrompts = ref<CustomPrompt[]>([])
@@ -503,10 +504,10 @@ async function savePromptOrder() {
   }
 }
 
-// 监听用户输入变化
-watch(userInput, () => {
-  emitUpdate()
-})
+  // 监听用户输入变化
+  watch(userInput, () => {
+    emitUpdate()
+  })
 
 // 移除拖拽相关的监听器
 
@@ -567,8 +568,41 @@ defineExpose({
   statusText,
   updateData,
   handleQuoteMessage,
+  // 强制同步输入：结束输入法合成并从DOM读取最新值
+  async forceSync() {
+    try {
+      const el = (textareaRef.value as any)?.$el?.querySelector('textarea')
+        || (textareaRef.value as any)?.inputElRef
+
+      if (el) {
+        // 尝试结束正在进行的输入法合成
+        if (isComposing.value) {
+          try { el.blur() } catch {}
+          try { el.focus() } catch {}
+          isComposing.value = false
+        }
+
+        // 从DOM取值，确保拿到最新内容
+        if (typeof el.value === 'string')
+          userInput.value = el.value
+      }
+    }
+    catch {}
+  },
   // 提供获取最新快照的方法，避免快捷键触发时数据未同步
   getCurrentData: () => {
+    // 从 DOM 强制读取一次文本，避免输入法合成/未同步导致取到旧值
+    let domValue: string | undefined
+    try {
+      const el = (textareaRef.value as any)?.$el?.querySelector('textarea')
+        || (textareaRef.value as any)?.inputElRef
+      domValue = el?.value
+    }
+    catch {}
+
+    if (typeof domValue === 'string')
+      userInput.value = domValue
+
     const conditionalContent = generateConditionalContent()
     const finalUserInput = userInput.value + conditionalContent
     return {
@@ -732,6 +766,8 @@ defineExpose({
       <n-input
         ref="textareaRef"
         v-model:value="userInput"
+        @compositionstart="isComposing = true"
+        @compositionend="() => { isComposing = false; emitUpdate() }"
         type="textarea"
         size="small"
         :placeholder="hasOptions ? `您可以在这里添加补充说明... (支持粘贴图片 ${pasteShortcut})` : `请输入您的回复... (支持粘贴图片 ${pasteShortcut})`"

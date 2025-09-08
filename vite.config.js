@@ -21,7 +21,10 @@ export default defineConfig({
   },
   envPrefix: ['VITE_', 'TAURI_'],
   build: {
-    target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'safari13',
+    // 说明：启用 top-level await 等现代特性
+    // - Windows 仍定位到较新的 Chrome Runtime
+    // - 非 Windows（macOS/Linux 的 WebView）使用 'esnext' 以支持 TLA
+    target: process.env.TAURI_PLATFORM === 'windows' ? 'chrome105' : 'esnext',
     minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     sourcemap: !!process.env.TAURI_DEBUG,
     chunkSizeWarningLimit: 1500,
